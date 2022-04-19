@@ -1,0 +1,48 @@
+#!/bin/sh
+
+set -e
+#set -ex
+
+# 应用程序所在目录
+PRGDIR=$(dirname $(readlink -f "$0"))
+. $PRGDIR/functions
+
+REPOS=$PRGDIR/repos.conf
+if [ ! -f $REPOS ]; then
+	error "$REPOS isnot exist!"
+	exit 1
+fi
+
+TMPDIR=$PRGDIR/repos
+if [ ! -d $TMPDIR ]; then
+	mkdir -p $TMPDIR
+fi
+
+sed '/^[[:space:]]*#/d; /^[[:space:]]*$/d; s/#.*//' $REPOS | while read line
+do
+	name=`echo $line | cut -d ' ' -f1`
+	repo=`echo $line | cut -d ' ' -f2`
+	branch=`echo $line | cut -d ' ' -f3`
+	echo "name: $name"
+	echo "repo: $repo"
+	echo "branch: $branch"
+	if [ -n "$name" -a -n "$repo" ]; then
+		cd $TMPDIR
+		rm -fr $name
+		git clone -b ${branch:-"master"} --depth=1 $repo $name 2>/dev/null
+		cd $name
+		git rm -r --cache * >/dev/null 2>&1 &
+		rm -rf `find ./* -maxdepth 0 -type d` >/dev/null 2>&1
+		echo "before feeds, current dir: `pwd`"
+		../../feeds
+		echo "after feeds, current dir: `pwd`"
+		#cd $TMPDIR/$name
+		#echo "after cd, current dir: `pwd`"
+		set +e
+		git add .
+		git commit -am "update $(date +%Y-%m-%d" "%H:%M:%S)"
+		git push
+		set -e
+	fi
+done
+
