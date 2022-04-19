@@ -35,6 +35,8 @@ jobs:
         git config --global user.name "github-actions[bot]"
         
     - name: Running sync script
+      env:
+        GITHUB_TOKEN: ${{ secrets.PUSH_TOKEN }}
       run: |
         ./main
    
