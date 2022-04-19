@@ -21,17 +21,6 @@
 
 需要同步的分支名，默认为 `master`
 
-### srcdir
-
-需要同步的子目录列表，留空默认为整个仓库，包括隐藏目录如 `.github`
-
-配置多个子目录时，需要用 `:` 隔开，如 `rom1:rom2`
-
-- 可以使用通配符 `*`，指仓库主目录下的所有非隐藏子目录，而 `*:.*` 相当于整个仓库
-- 隐藏目录需要单独配置，如 `.github` 指同步 `.github` 目录
-- 目录名支持多级，如 `application/luci-app-acceesscontrol`
-- 多子目录中，如果最后目录名相同，会合并内容，相同文件以最后一个为主
-
 ### destdir
 
 目标目录名称，留空保存目录名不变
@@ -47,14 +36,29 @@
 
 目标目录不存在，会自动创建
 
+### srcdir
+
+需要同步的目录列表，留空默认为整个仓库，包括隐藏目录如 `.github`
+
+配置多个子目录时，用空格隔开
+
+- 可以使用通配符 `*`
+  - 如 `* .*` 相当于整个仓库，包括文件如 `README`
+  - 如 `*/` 则指仓库根目录下所有非隐藏目录
+- 隐藏目录需要单独配置，如 `.github` 指同步 `.github` 目录
+- 目录名支持多级，如 `application/luci-app-acceesscontrol`
+- 多子目录中，如果最后目录名相同，会合并内容，相同文件以最后一个为主
+
+可支持文件
+
 ### srcdir 与 destdir 组合使用
 
 - srcdir 未配置，destdir 未配置：指直接把源仓库当做一个目录同步到当前仓库的根目录下
-- srcdir 配置，destdir 未配置：指把源仓库中的 srcdir (包括多目录) 同步到当前仓库的根目录下
 - srcdir 未配置，destdir 配置：指把源仓库当作一个目录
   - 当 destdir 不存在，则源仓库改名，同步到当前仓库的根目录下
   - 若 destdir 已存在，则会把源仓库当子目录放在 destdir 目录下
-- srcdir 配置，destdir 配置: 
+- srcdir 配置，destdir 未配置：指把源仓库中的 srcdir (包括多目录) 同步到当前仓库的根目录下
+- srcdir 配置，destdir 配置: (`cp -a || rsync -a`)
   - 当 srcdir 为单目录时
     - 若 destdir 不存在，则将 srcdir 改名，同步到当前仓库中的根目录下
     - 若 destdir 已存在，则将 srcdir 放在 destdir 目录下
