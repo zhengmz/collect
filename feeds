@@ -24,31 +24,13 @@ if [ ! -d $TMPDIR ]; then
 	mkdir -p $TMPDIR
 fi
 
-# 原有函数
-# 不支持隐藏目录
-function git_sparse_clone() {
-	branch="$1" rurl="$2" localdir="$3" && shift 3
-	git clone -b $branch --depth 1 --filter=blob:none --sparse $rurl $localdir
-	cd $localdir
-	git sparse-checkout init --cone
-	git sparse-checkout set $@
-	mv -n $@ ../
-	cd ..
-	rm -rf $localdir
-}
-
-function mvdir() {
-	mv -n `find $1/* -maxdepth 0 -type d` ./
-	rm -rf $1
-}
-
 # 去掉值边上的引号
-function trim_quote() {
+trim_quote() {
 	echo "$*" | sed 's/^"*//; s/"*$//'
 }
 
 # 将目录左边的 / 都去掉，用于同步
-function ltrim_slash() {
+ltrim_slash() {
 	#echo "$*" | awk '{for(x=1;x<=NF;x++){print $x}}' | sed 's/^\///; s/\/$//'
 	# 不把尾巴的 / 去掉，可支持文件
 	# 如 * 指所有非隐藏目录和文件，而 */ 指所有非隐藏目录
@@ -56,7 +38,7 @@ function ltrim_slash() {
 }
 # 加上前缀 /，用于 git sparse-checkout
 # 避免把子目录同样名称也 checkout 出来
-function ladd_slash() {
+ladd_slash() {
 	# * 表示默认所有目录，所以设为 /*/ 
 	# echo "$*" | awk '{for(x=1;x<=NF;x++){print "/"$x}}' | sed 's/^\/\*/\/\*\//'
 	# 不再只支持目录，还支持文件
@@ -64,7 +46,7 @@ function ladd_slash() {
 }
 
 # 部分同步
-function copy_sparse() {
+copy_sparse() {
 	local srcdir="$1"
 	local srcdir_relate=$(ltrim_slash "${srcdir}")
 	local srcdir_absolute=$(ladd_slash "$srcdir_relate")
@@ -75,14 +57,14 @@ function copy_sparse() {
 }
 
 # 整个仓库同步
-function copy_repo() {
+copy_repo() {
 	rm -fr .git
 	cd ..
 	cp_a $2 $1
 }
 
 # 实际同步脚本
-function cp_a() {
+cp_a() {
 	local dest=$1
 	shift
 	local src=$@
