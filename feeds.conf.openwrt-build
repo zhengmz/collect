@@ -1,0 +1,10 @@
+# repo branch destdir srcdir
+https://github.com/P3TERX/Actions-OpenWrt main %n-%u
+https://github.com/molun/Auto-Build-OpenWrt main %n-%u
+https://github.com/kenzok78/Build-OpenWrt main %n-%u
+https://github.com/klever1988/nanopi-openwrt master %n-%u
+https://github.com/esirplayground/AutoBuild-OpenWrt master %n-%u
+https://github.com/riverscn/build-openwrt-firmware main %n-%u
+https://github.com/fangweilong/ActionsBuild-OpenWrt main %n-%u
+https://github.com/KFERMercer/OpenWrt-CI master %n-%u
+
