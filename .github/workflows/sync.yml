@@ -1,0 +1,39 @@
+name: Sync Code
+
+# Add a button to trigger the workflow
+on: 
+  repository_dispatch:
+  workflow_dispatch:
+  
+  push:
+    branches: 
+      - script
+
+  # UTC time
+  schedule:
+    - cron: 0 20 * * *
+
+jobs:
+
+  merge:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        ref: script
+        fetch-depth: 0
+        lfs: false
+
+    - name: Syncing Preparation
+      run : |
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --global user.name "github-actions[bot]"
+        
+    - name: Running sync script
+      run: |
+        ./main
+   
