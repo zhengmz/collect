@@ -3,25 +3,26 @@
 set -e
 #set -ex
 
-TOPDIR=$(dirname $(readlink -f "$0"))
-TMPDIR=$TOPDIR/tmp
-if [ ! -d $TMPDIR ]; then
-	mkdir -p $TMPDIR
+# 应用程序所在目录
+PRGDIR=$(dirname $(readlink -f "$0"))
+. $PRGDIR/functions
+
+# 要更新仓库所在目录
+TOPDIR=`pwd`
+if [ "$PRGDIR" = "$TOPDIR" ]; then
+	error "NOT RUN HERE!"
+	exit 1
 fi
-FEEDS_FILE=$TOPDIR/feeds.conf
+FEEDS_FILE="$PRGDIR/feeds.conf.$(basename $TOPDIR)"
 if [ ! -f $FEEDS_FILE ]; then
 	error "$FEEDS_FILE isnot exist!"
 	exit 1
 fi
-TOPDIR=$TOPDIR/abc
-if [ ! -d $TOPDIR ]; then
-	mkdir -p $TOPDIR
-fi
 
-log() { echo "$*"; }
-info() { log "INFO: $*"; }
-warn() { log "WARN: $*"; }
-error() { log "ERROR: $*"; }
+TMPDIR=$PRGDIR/tmp
+if [ ! -d $TMPDIR ]; then
+	mkdir -p $TMPDIR
+fi
 
 # 原有函数
 # 不支持隐藏目录
@@ -153,11 +154,6 @@ sync() {
 	info "$repo sync success."
 }
 
-# 清除原有的
-ls -a $TOPDIR
-find $TOPDIR/* -maxdepth 0 -type d |xargs rm -fr
-ls -a $TOPDIR
-
 # 去掉单行注释、空行、行尾注释
 # i=1
 sed '/^[[:space:]]*#/d; /^[[:space:]]*$/d; s/#.*//' $FEEDS_FILE | while read line
@@ -167,6 +163,4 @@ do
 	# 避免把 * 号解析出来
 	sync_line "$line"
 done
-
-ls -a $TOPDIR
 
