@@ -1,0 +1,172 @@
+#!/bin/sh
+
+set -e
+#set -ex
+
+TOPDIR=$(dirname $(readlink -f "$0"))
+TMPDIR=$TOPDIR/tmp
+if [ ! -d $TMPDIR ]; then
+	mkdir -p $TMPDIR
+fi
+FEEDS_FILE=$TOPDIR/feeds.conf
+if [ ! -f $FEEDS_FILE ]; then
+	error "$FEEDS_FILE isnot exist!"
+	exit 1
+fi
+TOPDIR=$TOPDIR/abc
+if [ ! -d $TOPDIR ]; then
+	mkdir -p $TOPDIR
+fi
+
+log() { echo "$*"; }
+info() { log "INFO: $*"; }
+warn() { log "WARN: $*"; }
+error() { log "ERROR: $*"; }
+
+# 原有函数
+# 不支持隐藏目录
+function git_sparse_clone() {
+	branch="$1" rurl="$2" localdir="$3" && shift 3
+	git clone -b $branch --depth 1 --filter=blob:none --sparse $rurl $localdir
+	cd $localdir
+	git sparse-checkout init --cone
+	git sparse-checkout set $@
+	mv -n $@ ../
+	cd ..
+	rm -rf $localdir
+}
+
+function mvdir() {
+	mv -n `find $1/* -maxdepth 0 -type d` ./
+	rm -rf $1
+}
+
+# 去掉值边上的引号
+function trim_quote() {
+	echo "$*" | sed 's/^"*//; s/"*$//'
+}
+
+# 将目录左边的 / 都去掉，用于同步
+function ltrim_slash() {
+	#echo "$*" | awk '{for(x=1;x<=NF;x++){print $x}}' | sed 's/^\///; s/\/$//'
+	# 不把尾巴的 / 去掉，可支持文件
+	# 如 * 指所有非隐藏目录和文件，而 */ 指所有非隐藏目录
+	echo "$*" | awk '{for(x=1;x<=NF;x++){print $x}}' | sed 's/^\///'
+}
+# 加上前缀 /，用于 git sparse-checkout
+# 避免把子目录同样名称也 checkout 出来
+function ladd_slash() {
+	# * 表示默认所有目录，所以设为 /*/ 
+	# echo "$*" | awk '{for(x=1;x<=NF;x++){print "/"$x}}' | sed 's/^\/\*/\/\*\//'
+	# 不再只支持目录，还支持文件
+	echo "$*" | awk '{for(x=1;x<=NF;x++){print "/"$x}}'
+}
+
+# 部分同步
+function copy_sparse() {
+	local srcdir="$1"
+	local srcdir_relate=$(ltrim_slash "${srcdir}")
+	local srcdir_absolute=$(ladd_slash "$srcdir_relate")
+	git sparse-checkout set "${srcdir_absolute}"
+	# 对多个子目录不会更新，需要应用一下
+	git sparse-checkout reapply
+	cp_a $2 $srcdir_relate
+}
+
+# 整个仓库同步
+function copy_repo() {
+	rm -fr .git
+	cd ..
+	cp_a $2 $1
+}
+
+# 实际同步脚本
+function cp_a() {
+	local dest=$1
+	shift
+	local src=$@
+	# 允许出错
+	set +e
+	cp -a $src $dest 2>/dev/null
+	if [ $? -ne 0 ]; then
+		mkdir -p $dest
+		cp -a $src $dest
+	fi
+	set -e
+	return $?
+}
+
+# 把一行的数据当作一个整体处理
+sync_line() {
+	# 避免通配符 * 被展开
+	local repo=`echo "$@" | awk '{print $1}'`
+	local branch=`echo "$@" | awk '{print $2}'`
+	local destdir=`echo "$@" | awk '{print $3}'`
+	local srcdir=`echo "$@" | awk '{for(x=4;x<=NF;x++){print $x}}'`
+
+	# 格式化
+	repo=$(trim_quote "$repo")
+	destdir=$(trim_quote "$destdir")
+	branch=$(trim_quote "${branch}")
+	srcdir=$(trim_quote "$srcdir")
+
+	if [ -z "$repo" ]; then
+		error "repo url is null!"
+		return
+	fi
+
+	sync "$repo" "$branch" "$destdir" "$srcdir"
+}
+
+# 同步主处理函数
+sync() {
+	local repo="$1"
+	local branch="$2"
+	local destdir="$3"
+	local srcdir="$4"
+
+	# 获取仓库名称和用户名
+	local repo_name=$(echo "${repo##*/}" | sed 's/\.git$//')
+	local owner_name="${repo%/*}"; owner_name="${owner_name##*/}"
+
+	# 替换变量定义 %u 和 %n
+	destdir=${destdir/%u/$owner_name}
+	destdir=${destdir/%n/$repo_name}
+
+	# 获取代码
+	cd $TMPDIR
+	rm -fr $repo_name
+	git clone -b ${branch:-"master"} --depth=1 --filter=blob:none $repo $repo_name 2>/dev/null
+	cd $repo_name
+
+	if [ -z "$srcdir" ]; then
+		copy_repo $repo_name $TOPDIR/$destdir
+	else
+		copy_sparse "$srcdir" $TOPDIR/$destdir
+	fi
+
+	if [ $? -ne 0 ]; then
+		error "$repo sync fail."
+		return
+	fi
+
+	info "$repo sync success."
+}
+
+# 清除原有的
+ls -a $TOPDIR
+find $TOPDIR/* -maxdepth 0 -type d |xargs rm -fr
+ls -a $TOPDIR
+
+# 去掉单行注释、空行、行尾注释
+# i=1
+sed '/^[[:space:]]*#/d; /^[[:space:]]*$/d; s/#.*//' $FEEDS_FILE | while read line
+do
+	#echo "$i : [$line]"
+	#i=$((i+1))
+	# 避免把 * 号解析出来
+	sync_line "$line"
+done
+
+ls -a $TOPDIR
+
