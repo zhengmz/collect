@@ -20,6 +20,8 @@ jobs:
     #runs-on: ubuntu-latest
     runs-on: alpine-latest
 
+    if: github.event.repository.owner.id == github.event.sender.id
+
     steps:
 
     - name: Checkout
