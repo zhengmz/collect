@@ -5,13 +5,13 @@ on:
   repository_dispatch:
   workflow_dispatch:
   
-  push:
-    branches: 
-      - script
+  #push:
+  #  branches: 
+  #    - script
 
   # UTC time
-  schedule:
-    - cron: 0 20 * * *
+  #schedule:
+  #  - cron: 0 20 * * *
 
 jobs:
 
